@@ -6,9 +6,12 @@ from app.db.models import Base
 from app.routes import zones
 from app.core.watchdog import watchdog
 from app.routes import auth
+from app.routes import sos
+from app.routes import realtime
 import asyncio
 
 Base.metadata.create_all(bind=engine)
+sos.ensure_sos_schema()
 
 app = FastAPI(
     title="RapidRelief API",
@@ -35,3 +38,5 @@ def protected(user=Depends(verify_token)):
 app.include_router(devices.router, prefix="/api")
 app.include_router(zones.router)
 app.include_router(auth.router)
+app.include_router(sos.router)
+app.include_router(realtime.router)

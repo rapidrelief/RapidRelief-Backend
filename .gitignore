@@ -3,3 +3,8 @@ __pycache__/
 app/firebase/firebase_service_account.json
 .env
 serviceAccountKey.json
+
+*.db
+*.db-shm
+*.db-wal
+venv/

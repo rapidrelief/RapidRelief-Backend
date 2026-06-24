@@ -48,3 +48,40 @@ class ZoneState(Base):
     active_devices = Column(Integer)
     lost_devices = Column(Integer)
     confidence = Column(Float)    
+
+class SOSRequest(Base):
+    __tablename__ = "sos_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    zone_id = Column(Integer)
+    user_id = Column(String, nullable=True)
+    user_name = Column(String, nullable=True)
+    user_phone = Column(String, nullable=True)
+    rescuer_id = Column(String)
+    rescuer_name = Column(String)
+    source = Column(String, default="RESCUER")
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    location_updated_at = Column(Float, nullable=True)
+    is_live_location = Column(Boolean, default=False)
+    status = Column(String, default="Active")
+    created_at = Column(Float)
+    completed_at = Column(Float, nullable=True)
+    completed_by = Column(String, nullable=True)
+    completed_by_name = Column(String, nullable=True)
+    details = Column(JSON, nullable=True)
+
+class ZoneNode(Base):
+    __tablename__ = "zone_nodes"
+
+    node_id = Column(Integer, primary_key=True)
+    gateway_id = Column(Integer, nullable=False)
+
+    zone_id = Column(Integer, nullable=False)
+    flood = Column(Boolean, default=False)
+    sos = Column(Boolean, default=False)
+    last_seen = Column(Float)  
+    is_lost = Column(Boolean, default=False)
+
+    encrypted = Column(Boolean, default=True)
+     
