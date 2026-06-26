@@ -11,6 +11,7 @@ from sync_firestore import restore_db, backup_db
 
 Base.metadata.create_all(bind=engine)
 sos.ensure_sos_schema()
+infrastructure.ensure_user_schema()
 
 app = FastAPI(
     title="RapidRelief API",

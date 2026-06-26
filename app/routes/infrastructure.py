@@ -25,8 +25,6 @@ def ensure_user_schema():
         print("Schema update error:", e)
     _user_schema_ready = True
 
-ensure_user_schema()
-
 def get_db():
     db = SessionLocal()
     try:
