@@ -45,6 +45,9 @@ class OrgDeviceCreate(BaseModel):
     api_key: str
     zone_id: int
 
+class OrgNodeCreate(BaseModel):
+    gateway_id: int
+
 def get_zone_stats(zone_id: int, db_session: Session):
     gateways = db_session.query(Device).filter(Device.zone_id == zone_id).all()
     nodes = db_session.query(ZoneNode).filter(ZoneNode.zone_id == zone_id).all()
@@ -158,6 +161,49 @@ def create_org_device(firebase_uid: str, req: OrgDeviceCreate, db_session: Sessi
     db_session.commit()
     db_session.refresh(d)
     return {"status": "success", "device_id": d.device_id}
+
+@router.get("/nodes")
+def get_org_nodes(firebase_uid: str, db_session: Session = Depends(get_db)):
+    caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if not caller or caller.role != "ORG_ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    nodes = db_session.query(ZoneNode).filter(ZoneNode.organization_id == caller.organization_id).all()
+    result = []
+    for n in nodes:
+        result.append({
+            "node_id": n.node_id,
+            "gateway_id": n.gateway_id,
+            "zone_id": n.zone_id,
+            "is_lost": n.is_lost,
+            "last_seen": n.last_seen,
+            "flood": n.flood,
+            "sos": n.sos,
+            "encrypted": n.encrypted
+        })
+    return result
+
+@router.post("/node")
+def create_org_node(firebase_uid: str, req: OrgNodeCreate, db_session: Session = Depends(get_db)):
+    caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if not caller or caller.role != "ORG_ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    # Verify gateway belongs to org
+    gateway = db_session.query(Device).filter(Device.device_id == req.gateway_id).first()
+    if not gateway or (gateway.organization_id is not None and gateway.organization_id != caller.organization_id):
+        raise HTTPException(status_code=404, detail="Gateway not found or access denied")
+
+    n = ZoneNode(
+        gateway_id=req.gateway_id,
+        zone_id=gateway.zone_id,
+        organization_id=caller.organization_id,
+        encrypted=True
+    )
+    db_session.add(n)
+    db_session.commit()
+    db_session.refresh(n)
+    return {"status": "success", "node_id": n.node_id}
 
 @router.get("/global_zones")
 def get_global_zones(firebase_uid: str, db_session: Session = Depends(get_db)):
