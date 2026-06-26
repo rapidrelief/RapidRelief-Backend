@@ -266,7 +266,8 @@ def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db))
             except ValueError:
                 z_id = None
                 
-            if z_id is not None and z_id in org_zone_ids:
+            # Include SOS if it's in their zone OR if it's completely unassigned (z_id is None)
+            if z_id is None or z_id in org_zone_ids:
                 # Avoid duplicates if it's already in SQLite
                 if not any(r["id"] == str(doc.id) for r in result):
                     result.append({
