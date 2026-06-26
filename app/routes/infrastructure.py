@@ -58,14 +58,16 @@ def get_zone_stats(zone_id: int, db_session: Session):
     total_nodes = len(nodes)
     total_devices = total_gateways + total_nodes
     
-    active_gateways = sum(1 for g in gateways if not g.is_lost)
-    active_nodes = sum(1 for n in nodes if not n.is_lost)
+    communicating_devices = sum(1 for g in gateways if g.last_seen is not None) + sum(1 for n in nodes if n.last_seen is not None)
+    
+    active_gateways = sum(1 for g in gateways if not g.is_lost and g.last_seen is not None)
+    active_nodes = sum(1 for n in nodes if not n.is_lost and n.last_seen is not None)
     active_devices = active_gateways + active_nodes
     
     has_sos = any(g.sos for g in gateways) or any(n.sos for n in nodes)
     has_flood = any(g.flood for g in gateways) or any(n.flood for n in nodes)
     
-    if total_devices == 0:
+    if total_devices == 0 or communicating_devices == 0:
         signal_state = "nosignal"
     elif has_sos:
         signal_state = "sos"
