@@ -25,6 +25,9 @@ class User(Base):
     qualifications = Column(JSON, nullable=True)
     password_changed = Column(Boolean, default=False)
     is_super_admin = Column(Boolean, default=False) # The manual flag
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    location_updated_at = Column(Float, nullable=True)
 
 class Device(Base):
     __tablename__ = "devices"

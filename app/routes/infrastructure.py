@@ -6,8 +6,26 @@ from pydantic import BaseModel
 from typing import List
 import time
 from app.db.models import ZoneNode
+from sqlalchemy import text
+from app.db.session import engine
 
 router = APIRouter(prefix="/org_admin", tags=["org_admin_infrastructure"])
+
+_user_schema_ready = False
+def ensure_user_schema():
+    global _user_schema_ready
+    if _user_schema_ready: return
+    try:
+        with engine.begin() as conn:
+            existing = {row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()}
+            for col, dtype in {"lat": "FLOAT", "lng": "FLOAT", "location_updated_at": "FLOAT"}.items():
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {dtype}"))
+    except Exception as e:
+        print("Schema update error:", e)
+    _user_schema_ready = True
+
+ensure_user_schema()
 
 def get_db():
     db = SessionLocal()
@@ -198,3 +216,59 @@ def get_global_devices(firebase_uid: str, db_session: Session = Depends(get_db))
             "organization_id": d.organization_id
         })
     return result
+
+@router.get("/active_sos")
+def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db)):
+    caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if not caller or caller.role != "ORG_ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    org_zones = db_session.query(Zone.id).filter(Zone.organization_id == caller.organization_id).all()
+    org_zone_ids = [z[0] for z in org_zones]
+    
+    if not org_zone_ids:
+        return []
+
+    from app.db.models import SOSRequest
+    active_sos = db_session.query(SOSRequest).filter(
+        SOSRequest.status == "Active",
+        SOSRequest.zone_id.in_(org_zone_ids)
+    ).all()
+    
+    result = []
+    for sos in active_sos:
+        result.append({
+            "id": sos.id,
+            "zone_id": sos.zone_id,
+            "user_name": sos.user_name,
+            "user_phone": sos.user_phone,
+            "rescuer_name": sos.rescuer_name,
+            "source": sos.source,
+            "lat": sos.lat,
+            "lng": sos.lng,
+            "created_at": sos.created_at,
+            "details": sos.details
+        })
+    return result
+
+@router.get("/active_floods")
+def get_org_active_floods(firebase_uid: str, db_session: Session = Depends(get_db)):
+    caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if not caller or caller.role != "ORG_ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    org_zones = db_session.query(Zone).filter(Zone.organization_id == caller.organization_id).all()
+    
+    result = []
+    for z in org_zones:
+        stats = get_zone_stats(z.id, db_session)
+        if stats["signal_state"] == "flood":
+            result.append({
+                "zone_id": z.id,
+                "zone_name": z.name,
+                "lat": z.lat,
+                "lng": z.lng,
+                "active_devices": stats["active_devices"]
+            })
+    return result
+
