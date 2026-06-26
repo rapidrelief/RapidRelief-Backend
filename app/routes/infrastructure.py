@@ -255,11 +255,18 @@ def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db))
     # Fetch from Firestore
     try:
         from app.firebase.firebase import db
-        docs = db.collection("sos_requests").where("status", "==", "Active").stream()
+        # Handle both 'Active' and 'ACTIVE' cases that might exist in Firestore
+        docs = db.collection("sos_requests").where("status", "in", ["Active", "ACTIVE"]).stream()
         for doc in docs:
             data = doc.to_dict()
-            z_id = data.get("zone_id")
-            if z_id in org_zone_ids:
+            z_id_raw = data.get("zone_id")
+            
+            try:
+                z_id = int(str(z_id_raw)) if z_id_raw is not None else None
+            except ValueError:
+                z_id = None
+                
+            if z_id is not None and z_id in org_zone_ids:
                 # Avoid duplicates if it's already in SQLite
                 if not any(r["id"] == str(doc.id) for r in result):
                     result.append({
