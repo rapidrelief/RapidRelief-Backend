@@ -558,30 +558,48 @@ def clear_user_sos_history(user_id: str):
 
 
 @router.post("/complete/{sos_id}")
-def complete_sos(sos_id: int, data: dict = None):
+def complete_sos(sos_id: str, data: dict = None):
     ensure_sos_schema()
     db = SessionLocal()
     now = time.time()
 
-    sos = db.get(SOSRequest, sos_id)
+    sos = None
+    # Try parsing as int for SQLite
+    try:
+        sqlite_id = int(sos_id.replace("request-", ""))
+        sos = db.get(SOSRequest, sqlite_id)
+    except ValueError:
+        pass
 
-    if not sos:
-        db.close()
-        return {"error": "Not found"}
+    if sos:
+        sos.status = "COMPLETED"
+        sos.completed_at = now
+        if data:
+            sos.completed_by = data.get("completed_by")
+            sos.completed_by_name = data.get("completed_by_name")
 
-    sos.status = "COMPLETED"
-    sos.completed_at = now
+        release_zone_sos_if_allowed(db, sos.zone_id)
+        if sos.zone_id:
+            from app.core.rules import evaluate_system
+            evaluate_system(sos.zone_id, db)
+        db.commit()
 
-    if data:
-        sos.completed_by = data.get("completed_by")
-        sos.completed_by_name = data.get("completed_by_name")
+    # Always update Firestore to ensure it disappears from the dashboard
+    try:
+        from app.firebase.firebase import db as firestore_db
+        doc_id = sos_id if sos_id.startswith("request-") else f"request-{sos_id}"
+        update_data = {
+            "status": "COMPLETED",
+            "completed_at": now
+        }
+        if data:
+            update_data["completed_by"] = data.get("completed_by")
+            update_data["completed_by_name"] = data.get("completed_by_name")
+            
+        firestore_db.collection("sos_requests").document(doc_id).set(update_data, merge=True)
+    except Exception as e:
+        print(f"Firestore update failed for SOS complete: {e}")
 
-    release_zone_sos_if_allowed(db, sos.zone_id)
-    if sos.zone_id:
-        from app.core.rules import evaluate_system
-        evaluate_system(sos.zone_id, db)
-
-    db.commit()
     db.close()
-
     return {"message": "SOS Completed"}
+

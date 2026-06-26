@@ -224,9 +224,12 @@ def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db))
         raise HTTPException(status_code=403, detail="Unauthorized")
     
     org_zones = db_session.query(Zone.id).filter(Zone.organization_id == caller.organization_id).all()
-    org_zone_ids = [z[0] for z in org_zones]
+    global_zones = db_session.query(Zone.id).filter(Zone.organization_id == None).all()
     
-    if not org_zone_ids:
+    # Org admins can see SOS from their own zones AND unassigned/global zones
+    visible_zone_ids = [z[0] for z in org_zones] + [z[0] for z in global_zones]
+    
+    if not visible_zone_ids:
         return []
 
     result = []
@@ -235,7 +238,7 @@ def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db))
     from app.db.models import SOSRequest
     active_sos = db_session.query(SOSRequest).filter(
         SOSRequest.status == "Active",
-        SOSRequest.zone_id.in_(org_zone_ids)
+        SOSRequest.zone_id.in_(visible_zone_ids)
     ).all()
     
     for sos in active_sos:
@@ -267,7 +270,7 @@ def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db))
                 z_id = None
                 
             # Include SOS if it's in their zone OR if it's completely unassigned (z_id is None)
-            if z_id is None or z_id in org_zone_ids:
+            if z_id is None or z_id in visible_zone_ids:
                 # Avoid duplicates if it's already in SQLite
                 if not any(r["id"] == str(doc.id) for r in result):
                     result.append({
