@@ -371,3 +371,48 @@ def get_org_active_floods(firebase_uid: str, db_session: Session = Depends(get_d
             })
     return result
 
+
+@router.delete("/zone/{zone_id}")
+def delete_org_zone(zone_id: int, firebase_uid: str, db_session: Session = Depends(get_db)):
+    caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if not caller or caller.role != "ORG_ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    zone = db_session.query(Zone).filter(Zone.id == zone_id, Zone.organization_id == caller.organization_id).first()
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
+        
+    db_session.query(Device).filter(Device.zone_id == zone_id).delete()
+    db_session.query(ZoneNode).filter(ZoneNode.zone_id == zone_id).delete()
+    db_session.delete(zone)
+    db_session.commit()
+    return {"status": "success"}
+
+@router.delete("/device/{device_id}")
+def delete_org_device(device_id: int, firebase_uid: str, db_session: Session = Depends(get_db)):
+    caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if not caller or caller.role != "ORG_ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    device = db_session.query(Device).filter(Device.device_id == device_id, Device.organization_id == caller.organization_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+        
+    db_session.query(ZoneNode).filter(ZoneNode.gateway_id == device_id).delete()
+    db_session.delete(device)
+    db_session.commit()
+    return {"status": "success"}
+
+@router.delete("/node/{node_id}")
+def delete_org_node(node_id: int, firebase_uid: str, db_session: Session = Depends(get_db)):
+    caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if not caller or caller.role != "ORG_ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    node = db_session.query(ZoneNode).filter(ZoneNode.node_id == node_id, ZoneNode.organization_id == caller.organization_id).first()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+        
+    db_session.delete(node)
+    db_session.commit()
+    return {"status": "success"}
