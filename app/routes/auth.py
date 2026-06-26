@@ -322,27 +322,31 @@ def get_org_rescuers(firebase_uid: str, db_session: Session = Depends(get_db)):
     if not caller or caller.role != "ORG_ADMIN":
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    rescuers = db_session.query(User).filter(User.organization_id == caller.organization_id, User.role == "RESCUER").all()
     result = []
-    for r in rescuers:
-        try:
-            doc = db.collection("users").document(r.firebase_uid).get()
-            doc_data = doc.to_dict() if doc.exists else {}
-        except Exception:
-            doc_data = {}
-            
-        result.append({
-            "id": r.id,
-            "firebase_uid": r.firebase_uid,
-            "name": r.name,
-            "email": r.email,
-            "phone": r.phone,
-            "rescuer_id": doc_data.get("rescuerId", "N/A"),
-            "status": doc_data.get("status", "Offline"),
-            "cnic": doc_data.get("cnic", ""),
-            "address": doc_data.get("address", ""),
-            "emergency": doc_data.get("emergency", "")
-        })
+    try:
+        # Fetch directly from Firestore to ensure sync and get live coordinates
+        docs = db.collection("users").where("organization_id", "==", caller.organization_id).stream()
+        for doc in docs:
+            data = doc.to_dict()
+            role = data.get("role", "").lower()
+            if role == "rescuer":
+                result.append({
+                    "id": doc.id,
+                    "firebase_uid": data.get("uid", doc.id),
+                    "name": data.get("fullName", data.get("name", "Unknown")),
+                    "email": data.get("email", ""),
+                    "phone": data.get("phone", ""),
+                    "rescuer_id": data.get("rescuerId", "N/A"),
+                    "status": data.get("status", "Offline"),
+                    "cnic": data.get("cnic", ""),
+                    "address": data.get("address", ""),
+                    "emergency": data.get("emergency", ""),
+                    "lat": data.get("location", {}).get("lat", data.get("lat")),
+                    "lng": data.get("location", {}).get("lng", data.get("lng"))
+                })
+    except Exception as e:
+        print(f"Error fetching rescuers from firestore: {e}")
+        
     return result
 
 @router.delete("/org_admin/rescuer/{uid}")

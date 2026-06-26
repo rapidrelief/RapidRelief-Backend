@@ -229,16 +229,18 @@ def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db))
     if not org_zone_ids:
         return []
 
+    result = []
+    
+    # Fetch from SQLite
     from app.db.models import SOSRequest
     active_sos = db_session.query(SOSRequest).filter(
         SOSRequest.status == "Active",
         SOSRequest.zone_id.in_(org_zone_ids)
     ).all()
     
-    result = []
     for sos in active_sos:
         result.append({
-            "id": sos.id,
+            "id": str(sos.id),
             "zone_id": sos.zone_id,
             "user_name": sos.user_name,
             "user_phone": sos.user_phone,
@@ -249,6 +251,32 @@ def get_org_active_sos(firebase_uid: str, db_session: Session = Depends(get_db))
             "created_at": sos.created_at,
             "details": sos.details
         })
+        
+    # Fetch from Firestore
+    try:
+        from app.firebase.firebase import db
+        docs = db.collection("sos_requests").where("status", "==", "Active").stream()
+        for doc in docs:
+            data = doc.to_dict()
+            z_id = data.get("zone_id")
+            if z_id in org_zone_ids:
+                # Avoid duplicates if it's already in SQLite
+                if not any(r["id"] == str(doc.id) for r in result):
+                    result.append({
+                        "id": str(doc.id),
+                        "zone_id": z_id,
+                        "user_name": data.get("user_name", data.get("fullName", "Unknown User")),
+                        "user_phone": data.get("user_phone", data.get("phone", "")),
+                        "rescuer_name": data.get("rescuer_name", ""),
+                        "source": data.get("source", "USER"),
+                        "lat": data.get("lat", data.get("location", {}).get("lat", 0.0)),
+                        "lng": data.get("lng", data.get("location", {}).get("lng", 0.0)),
+                        "created_at": data.get("created_at", data.get("timestamp")),
+                        "details": data.get("details", {})
+                    })
+    except Exception as e:
+        print(f"Error fetching active sos from firestore: {e}")
+        
     return result
 
 @router.get("/active_floods")
