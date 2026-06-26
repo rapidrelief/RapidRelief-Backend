@@ -115,6 +115,7 @@ def get_zones_map():
             "lng": z.lng,
             "radius_m": z.radius_m,
             "priority": z.priority,
+            "organization_id": z.organization_id,
             "state": state,
             "total_devices": total_devices,
             "devices": total_devices,

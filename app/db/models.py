@@ -3,6 +3,29 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    address = Column(String, nullable=True)
+    status = Column(String, default="pending") # pending, approved, rejected
+    created_at = Column(Float)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    firebase_uid = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    role = Column(String, nullable=False) # SUPER_ADMIN, ORG_ADMIN, RESCUER
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    name = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    qualifications = Column(JSON, nullable=True)
+    password_changed = Column(Boolean, default=False)
+    is_super_admin = Column(Boolean, default=False) # The manual flag
+
 class Device(Base):
     __tablename__ = "devices"
 
@@ -17,6 +40,7 @@ class Device(Base):
     reconnected_after = Column(Integer, nullable=True)
 
     zone_id = Column(Integer, ForeignKey("zones.id"), nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
 class SystemEvent(Base):
     __tablename__ = "System_events"
@@ -38,6 +62,7 @@ class Zone(Base):
     radius_m = Column(Float, nullable=False)
 
     priority = Column(String, default="MEDIUM") #low / medium / high 
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
 class ZoneState(Base):
     __tablename__ = "zone_state"
@@ -84,4 +109,4 @@ class ZoneNode(Base):
     is_lost = Column(Boolean, default=False)
 
     encrypted = Column(Boolean, default=True)
-     
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
