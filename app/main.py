@@ -2,15 +2,12 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import devices
 from app.core.auth import verify_token
-from app.db.session import engine
+from app.db.session import engine, SessionLocal
 from app.db.models import Base
-from app.routes import zones
+from app.routes import zones, auth, sos, realtime, infrastructure, rescuer, notifications
 from app.core.watchdog import watchdog
-from app.routes import auth
-from app.routes import sos
-from app.routes import realtime
-from app.routes import infrastructure
 import asyncio
+from sync_firestore import restore_db, backup_db
 
 Base.metadata.create_all(bind=engine)
 sos.ensure_sos_schema()
@@ -28,8 +25,33 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+async def periodic_backup():
+    while True:
+        await asyncio.sleep(60) # Backup every 60 seconds
+        db_session = SessionLocal()
+        try:
+            backup_db(db_session)
+        except Exception as e:
+            print(f"Periodic backup failed: {e}")
+        finally:
+            db_session.close()
+
 @app.on_event("startup")
-async def start_watchdog():
+async def startup_event():
+    # If DB is empty, restore from Firebase
+    db_session = SessionLocal()
+    try:
+        from app.db import models
+        org_count = db_session.query(models.Organization).count()
+        user_count = db_session.query(models.User).count()
+        if org_count == 0 and user_count == 0:
+            print("DB is empty. Restoring from Firestore backups...")
+            restore_db(db_session)
+    finally:
+        db_session.close()
+    
+    # Start periodic backup
+    asyncio.create_task(periodic_backup())
     asyncio.create_task(watchdog())
 
 @app.get("/")
@@ -51,3 +73,5 @@ app.include_router(auth.router)
 app.include_router(sos.router)
 app.include_router(realtime.router)
 app.include_router(infrastructure.router)
+app.include_router(rescuer.router)
+app.include_router(notifications.router)
