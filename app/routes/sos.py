@@ -345,6 +345,29 @@ def create_sos(data: dict):
     result["quorum_count"] = quorum_count
     result["quorum_threshold"] = QUORUM_THRESHOLD
 
+    # Sync to Firestore to survive Render restarts and appear on Web Dashboard
+    try:
+        from app.firebase.firebase import db as firestore_db
+        doc_id = f"request-{sos.id}"
+        firestore_db.collection("sos_requests").document(doc_id).set({
+            "id": doc_id,
+            "zone_id": zone_id,
+            "user_id": user_id,
+            "user_name": data.get("user_name"),
+            "user_phone": data.get("user_phone"),
+            "rescuer_id": data.get("rescuer_id"),
+            "rescuer_name": data.get("rescuer_name"),
+            "source": source,
+            "lat": data.get("lat"),
+            "lng": data.get("lng"),
+            "status": "ACTIVE",
+            "created_at": now,
+            "timestamp": now,
+            "details": data.get("details")
+        }, merge=True)
+    except Exception as e:
+        print(f"Firestore sync failed for SOS: {e}")
+
     db.close()
     return {"message": "SOS Created", "sos": result}
 
@@ -362,6 +385,38 @@ def get_active_sos():
     )
 
     result = [serialize_sos(s) for s in sos_list]
+    
+    # Also fetch from Firestore to survive Render restarts
+    try:
+        from app.firebase.firebase import db as firestore_db
+        docs = firestore_db.collection("sos_requests").where("status", "in", ["ACTIVE", "Active"]).stream()
+        for doc in docs:
+            data = doc.to_dict()
+            # Avoid duplicates
+            if not any(str(r.get("id")) == str(doc.id) or str(r.get("id")) == str(doc.id).replace("request-", "") for r in result):
+                result.append({
+                    "id": doc.id,
+                    "zone_id": data.get("zone_id"),
+                    "user_id": data.get("user_id"),
+                    "user_name": data.get("user_name"),
+                    "user_phone": data.get("user_phone"),
+                    "rescuer_id": data.get("rescuer_id"),
+                    "rescuer_name": data.get("rescuer_name"),
+                    "source": data.get("source", "USER"),
+                    "lat": data.get("lat"),
+                    "lng": data.get("lng"),
+                    "location_updated_at": data.get("location_updated_at"),
+                    "is_live_location": data.get("is_live_location", True),
+                    "created_at": data.get("created_at"),
+                    "completed_at": data.get("completed_at"),
+                    "completed_by": data.get("completed_by"),
+                    "completed_by_name": data.get("completed_by_name"),
+                    "details": data.get("details"),
+                    "status": data.get("status", "ACTIVE")
+                })
+    except Exception as e:
+        print(f"Firestore fetch failed for active SOS: {e}")
+
     result.extend(get_active_zone_alerts(db))
     db.close()
     return {"sos": result}
