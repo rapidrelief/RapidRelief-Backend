@@ -42,10 +42,12 @@ class OrgZoneCreate(BaseModel):
     priority: str
 
 class OrgDeviceCreate(BaseModel):
+    device_id: int
     api_key: str
     zone_id: int
 
 class OrgNodeCreate(BaseModel):
+    node_id: int
     gateway_id: int
 
 def get_zone_stats(zone_id: int, db_session: Session):
@@ -152,7 +154,13 @@ def create_org_device(firebase_uid: str, req: OrgDeviceCreate, db_session: Sessi
     if not zone or (zone.organization_id is not None and zone.organization_id != caller.organization_id):
         raise HTTPException(status_code=404, detail="Zone not found or access denied")
 
+    # Check if device_id is already taken
+    existing_device = db_session.query(Device).filter(Device.device_id == req.device_id).first()
+    if existing_device:
+        raise HTTPException(status_code=400, detail="Gateway ID already exists")
+
     d = Device(
+        device_id=req.device_id,
         api_key=req.api_key,
         zone_id=req.zone_id,
         organization_id=caller.organization_id
@@ -194,7 +202,13 @@ def create_org_node(firebase_uid: str, req: OrgNodeCreate, db_session: Session =
     if not gateway or (gateway.organization_id is not None and gateway.organization_id != caller.organization_id):
         raise HTTPException(status_code=404, detail="Gateway not found or access denied")
 
+    # Check if node_id is already taken
+    existing_node = db_session.query(ZoneNode).filter(ZoneNode.node_id == req.node_id).first()
+    if existing_node:
+        raise HTTPException(status_code=400, detail="Node ID already exists")
+
     n = ZoneNode(
+        node_id=req.node_id,
         gateway_id=req.gateway_id,
         zone_id=gateway.zone_id,
         organization_id=caller.organization_id,
