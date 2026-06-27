@@ -24,15 +24,19 @@ def backup_db(db_session):
             (SOSRequest, 'backup_sos'),
         ]:
             docs = db_session.query(model_class).all()
-            if not docs:
-                continue
             pk_col = list(model_class.__table__.primary_key.columns)[0].name
+            
+            # Find what is currently in Firestore
+            existing_docs = {doc.id for doc in db.collection(collection_name).stream()}
+            sqlite_ids = set()
             
             batch = db.batch()
             count = 0
+            
             for item in docs:
                 data = serialize_model(item)
                 doc_id = str(data[pk_col])
+                sqlite_ids.add(doc_id)
                 doc_ref = db.collection(collection_name).document(doc_id)
                 batch.set(doc_ref, data)
                 count += 1
@@ -40,6 +44,18 @@ def backup_db(db_session):
                     batch.commit()
                     batch = db.batch()
                     count = 0
+            
+            # Delete anything in Firestore that isn't in SQLite anymore
+            orphaned_ids = existing_docs - sqlite_ids
+            for doc_id in orphaned_ids:
+                doc_ref = db.collection(collection_name).document(doc_id)
+                batch.delete(doc_ref)
+                count += 1
+                if count >= 400:
+                    batch.commit()
+                    batch = db.batch()
+                    count = 0
+                    
             if count > 0:
                 batch.commit()
     except Exception as e:
