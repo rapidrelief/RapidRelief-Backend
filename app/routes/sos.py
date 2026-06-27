@@ -611,7 +611,7 @@ def delete_sos(sos_id: str):
     
     sos = None
     try:
-        sqlite_id = int(sos_id.replace("request-", ""))
+        sqlite_id = int(str(sos_id).replace("request-", ""))
         sos = db.get(SOSRequest, sqlite_id)
     except ValueError:
         pass
@@ -622,7 +622,7 @@ def delete_sos(sos_id: str):
 
     try:
         from app.firebase.firebase import db as firestore_db
-        doc_id = sos_id if sos_id.startswith("request-") else f"request-{sos_id}"
+        doc_id = str(sos_id) if str(sos_id).startswith("request-") else f"request-{sos_id}"
         firestore_db.collection("sos_requests").document(doc_id).delete()
         firestore_db.collection("backup_sos").document(doc_id).delete()
     except Exception as e:
@@ -643,7 +643,7 @@ def bulk_delete_sos(data: dict):
     
     for sos_id in ids:
         try:
-            sqlite_id = int(sos_id.replace("request-", ""))
+            sqlite_id = int(str(sos_id).replace("request-", ""))
             sos = db.get(SOSRequest, sqlite_id)
             if sos:
                 db.delete(sos)
@@ -655,7 +655,7 @@ def bulk_delete_sos(data: dict):
     try:
         from app.firebase.firebase import db as firestore_db
         for sos_id in ids:
-            doc_id = sos_id if sos_id.startswith("request-") else f"request-{sos_id}"
+            doc_id = str(sos_id) if str(sos_id).startswith("request-") else f"request-{sos_id}"
             firestore_db.collection("sos_requests").document(doc_id).delete()
             firestore_db.collection("backup_sos").document(doc_id).delete()
     except Exception as e:
