@@ -135,7 +135,7 @@ def approve_organization(req: ApproveOrgRequest, db_session: Session = Depends(g
                 "uid": org_admin.firebase_uid,
                 "email": org_admin.email,
                 "role": "org_admin",
-                "organization_id": org.id,
+                "organization_id": f"ORG-{1000 + org.id}",
                 "organization_name": org.name
             }, merge=True)
     except Exception as e:
@@ -190,7 +190,7 @@ def create_rescuer(req: CreateRescuerRequest, db_session: Session = Depends(get_
             "fullName": req.rescuer_name,
             "phone": req.rescuer_phone,
             "role": "rescuer",
-            "organization_id": org.id,
+            "organization_id": f"ORG-{1000 + org.id}",
             "organization_name": org.name,
             "rescuerId": rescuer_id,
             "status": "Offline",
