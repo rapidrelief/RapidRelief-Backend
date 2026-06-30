@@ -516,6 +516,40 @@ def get_sos_history():
     )
 
     result = [serialize_sos(s) for s in sos_list]
+    
+    # Also fetch from Firestore
+    try:
+        from app.firebase.firebase import db as firestore_db
+        docs = firestore_db.collection("sos_requests").where("status", "in", ["COMPLETED", "Completed"]).stream()
+        for doc in docs:
+            data = doc.to_dict()
+            # Avoid duplicates
+            if not any(str(r.get("id")) == str(doc.id) or str(r.get("id")) == str(doc.id).replace("request-", "") for r in result):
+                comp_at = data.get("completed_at", 0)
+                if comp_at >= cutoff:
+                    result.append({
+                        "id": doc.id,
+                        "zone_id": data.get("zone_id"),
+                        "user_id": data.get("user_id"),
+                        "user_name": data.get("user_name"),
+                        "user_phone": data.get("user_phone"),
+                        "rescuer_id": data.get("rescuer_id"),
+                        "rescuer_name": data.get("rescuer_name"),
+                        "source": data.get("source", "USER"),
+                        "lat": data.get("lat"),
+                        "lng": data.get("lng"),
+                        "created_at": data.get("created_at"),
+                        "completed_at": data.get("completed_at"),
+                        "completed_by": data.get("completed_by"),
+                        "completed_by_name": data.get("completed_by_name"),
+                        "details": data.get("details"),
+                        "status": data.get("status", "COMPLETED")
+                    })
+    except Exception as e:
+        print(f"Firestore fetch failed for history SOS: {e}")
+        
+    result.sort(key=lambda x: x.get("completed_at") or 0, reverse=True)
+    
     db.commit()
     db.close()
     return {"sos": result}
