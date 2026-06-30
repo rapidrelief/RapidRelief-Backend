@@ -369,6 +369,26 @@ def get_org_active_floods(firebase_uid: str, db_session: Session = Depends(get_d
                 "lng": z.lng,
                 "active_devices": stats["active_devices"]
             })
+            
+    # Include Simulated Floods
+    from app.db.models import SOSRequest
+    simulated_floods = db_session.query(SOSRequest).filter(
+        SOSRequest.status == "Active",
+        SOSRequest.source == "ZONE_FLOOD",
+        SOSRequest.zone_id.in_([z.id for z in org_zones])
+    ).all()
+    
+    for f in simulated_floods:
+        if not any(r["zone_id"] == f.zone_id for r in result):
+            z_match = next((z for z in org_zones if z.id == f.zone_id), None)
+            result.append({
+                "zone_id": f.zone_id,
+                "zone_name": z_match.name if z_match else f"Zone {f.zone_id}",
+                "lat": f.lat,
+                "lng": f.lng,
+                "active_devices": "Simulated"
+            })
+            
     return result
 
 
