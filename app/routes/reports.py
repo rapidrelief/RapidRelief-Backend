@@ -1,10 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.db.session import get_db
+from app.db.session import SessionLocal
 from app.db.models import Report, User
 from app.models.schemas import ReportCreate, ReportResponse
 from app.core.auth import verify_token
 import time
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 router = APIRouter()
 
