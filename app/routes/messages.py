@@ -15,6 +15,17 @@ def get_db():
 
 router = APIRouter()
 
+@router.get("/debug/{uid}")
+def debug_user(uid: str, db: Session = Depends(get_db)):
+    u = db.query(User).filter(User.firebase_uid == uid).first()
+    if not u:
+        return {"error": "User not found"}
+    return {
+        "email": u.email,
+        "role": u.role,
+        "is_super_admin": u.is_super_admin
+    }
+
 @router.post("/send", response_model=MessageResponse)
 def send_message(
     msg: MessageCreate,
