@@ -26,6 +26,11 @@ def debug_user(uid: str, db: Session = Depends(get_db)):
         "is_super_admin": u.is_super_admin
     }
 
+@router.get("/debug_messages")
+def debug_messages(db: Session = Depends(get_db)):
+    msgs = db.query(Message).all()
+    return [{"id": m.id, "receiver_uid": m.receiver_uid, "content": m.content} for m in msgs]
+
 @router.post("/send", response_model=MessageResponse)
 def send_message(
     msg: MessageCreate,
