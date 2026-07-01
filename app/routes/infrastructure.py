@@ -222,7 +222,7 @@ def create_org_node(firebase_uid: str, req: OrgNodeCreate, db_session: Session =
 @router.get("/global_zones")
 def get_global_zones(firebase_uid: str, db_session: Session = Depends(get_db)):
     caller = db_session.query(User).filter(User.firebase_uid == firebase_uid).first()
-    if not caller or caller.role != "ORG_ADMIN":
+    if not caller or (caller.role != "ORG_ADMIN" and not caller.is_super_admin):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
     zones = db_session.query(Zone).all()
