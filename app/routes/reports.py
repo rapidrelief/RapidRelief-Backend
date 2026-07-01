@@ -50,8 +50,11 @@ def get_reports(
     if not db_user or not db_user.organization_id:
         raise HTTPException(status_code=403, detail="Not an organization admin")
     
+    # Auto-expire reports older than 1 hour (3600 seconds)
+    current_time = time.time()
     reports = db.query(Report).filter(
-        Report.organization_id == db_user.organization_id
+        Report.organization_id == db_user.organization_id,
+        (current_time - Report.created_at) <= 3600
     ).order_by(Report.created_at.desc()).all()
     
     return {"status": "success", "reports": reports}
