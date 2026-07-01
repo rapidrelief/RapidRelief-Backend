@@ -113,3 +113,15 @@ class ZoneNode(Base):
 
     encrypted = Column(Boolean, default=True)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    priority = Column(String, default="Medium") # High, Medium, Low
+    subject = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    report_type = Column(String, default="Notification") # Flood Warning, SOS, Notification
+    is_read = Column(Boolean, default=False)
+    created_at = Column(Float, nullable=False)

@@ -31,4 +31,24 @@ class CreateRescuerRequest(BaseModel):
 
 class SuperAdminFlagRequest(BaseModel):
     firebase_uid: str
-    secret_key: str # A simple hardcoded secret to allow the first super admin to bootstrap
+    secret_key: str # A simple hardcoded secret to allow the first super admin to bootstrap
+
+class ReportCreate(BaseModel):
+    organization_id: int
+    priority: str
+    subject: str
+    message: str
+    report_type: str
+
+class ReportResponse(BaseModel):
+    id: int
+    organization_id: int
+    priority: str
+    subject: str
+    message: str
+    report_type: str
+    is_read: bool
+    created_at: float
+
+    class Config:
+        orm_mode = True
