@@ -21,10 +21,11 @@ def create_report(
     user: dict = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    # Verify Super Admin
+    # For FYP prototype testing, we allow any logged-in user to send reports
+    # so you don't need separate Super Admin and Org Admin accounts
     db_user = db.query(User).filter(User.firebase_uid == user["uid"]).first()
-    if not db_user or not db_user.is_super_admin:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    if not db_user:
+        raise HTTPException(status_code=403, detail="User not found in database")
     
     new_report = Report(
         organization_id=report.organization_id,
