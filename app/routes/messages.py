@@ -67,19 +67,25 @@ def get_inbox(
     if not db_user:
         raise HTTPException(status_code=403, detail="User not found")
 
-    # Fetch messages directed to this specific user
-    filters = [Message.receiver_uid == db_user.firebase_uid]
-
-    # If Super Admin, fetch messages directed to "SUPER_ADMIN"
-    if db_user.is_super_admin or db_user.role == "super_admin" or db_user.role == "SUPER_ADMIN":
-        filters.append(Message.receiver_uid == "SUPER_ADMIN")
-    
-    # If Org Admin, fetch messages directed to their Org ID (e.g. "ORG-1001")
-    if db_user.role == "ORG_ADMIN" and db_user.organization_id:
-        filters.append(Message.receiver_uid == f"ORG-{1000 + db_user.organization_id}")
-
+    # Fetch messages directed to this user or their roles
     from sqlalchemy import or_
-    messages = db.query(Message).filter(or_(*filters)).order_by(Message.created_at.desc()).all()
+    
+    if db_user.is_super_admin or db_user.role == "super_admin" or db_user.role == "SUPER_ADMIN":
+        messages = db.query(Message).filter(
+            or_(
+                Message.receiver_uid == db_user.firebase_uid, 
+                Message.receiver_uid == "SUPER_ADMIN"
+            )
+        ).order_by(Message.created_at.desc()).all()
+    elif db_user.role == "ORG_ADMIN" and db_user.organization_id:
+        messages = db.query(Message).filter(
+            or_(
+                Message.receiver_uid == db_user.firebase_uid, 
+                Message.receiver_uid == f"ORG-{1000 + db_user.organization_id}"
+            )
+        ).order_by(Message.created_at.desc()).all()
+    else:
+        messages = db.query(Message).filter(Message.receiver_uid == db_user.firebase_uid).order_by(Message.created_at.desc()).all()
     
     return {"status": "success", "messages": messages}
 
