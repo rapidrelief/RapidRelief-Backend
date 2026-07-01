@@ -125,6 +125,8 @@ class Report(Base):
     report_type = Column(String, default="Notification") # Flood Warning, SOS, Notification
     is_read = Column(Boolean, default=False)
     created_at = Column(Float, nullable=False)
+    last_activity_at = Column(Float, nullable=True)
+    replies = Column(String, default="[]") # JSON stringified array of replies
 
 class Message(Base):
     __tablename__ = "messages"

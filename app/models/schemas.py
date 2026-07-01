@@ -49,9 +49,14 @@ class ReportResponse(BaseModel):
     report_type: str
     is_read: bool
     created_at: float
+    last_activity_at: float | None = None
+    replies: str = "[]"
 
     class Config:
         from_attributes = True
+
+class ReportReplyCreate(BaseModel):
+    content: str
 
 class MessageCreate(BaseModel):
     receiver_uid: str
