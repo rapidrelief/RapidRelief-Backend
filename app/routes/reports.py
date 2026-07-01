@@ -23,7 +23,7 @@ def create_report(
 ):
     # Verify Super Admin
     db_user = db.query(User).filter(User.firebase_uid == user["uid"]).first()
-    if not db_user or db_user.role != "SUPER_ADMIN":
+    if not db_user or not db_user.is_super_admin:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     new_report = Report(
