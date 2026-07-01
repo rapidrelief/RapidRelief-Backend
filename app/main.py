@@ -4,7 +4,7 @@ from app.routes import devices
 from app.core.auth import verify_token
 from app.db.session import engine, SessionLocal
 from app.db.models import Base
-from app.routes import zones, auth, sos, realtime, infrastructure
+from app.routes import zones, auth, sos, realtime, infrastructure, prediction
 from app.core.watchdog import watchdog
 import asyncio
 from sync_firestore import restore_db, backup_db
@@ -74,3 +74,4 @@ app.include_router(auth.router)
 app.include_router(sos.router)
 app.include_router(realtime.router)
 app.include_router(infrastructure.router)
+app.include_router(prediction.router)
