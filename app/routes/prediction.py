@@ -26,7 +26,7 @@ def get_db():
         db.close()
 
 @router.get("/zone/{zone_id}")
-def get_zone_prediction(zone_id: int, db: Session = Depends(get_db)):
+def get_zone_prediction(zone_id: int, days: int = 7, db: Session = Depends(get_db)):
     if rf_model is None:
         raise HTTPException(status_code=503, detail="ML Model not available. Please train it first.")
 
@@ -34,8 +34,8 @@ def get_zone_prediction(zone_id: int, db: Session = Depends(get_db)):
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
 
-    # Fetch 7-day forecast from Open-Meteo
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={zone.lat}&longitude={zone.lng}&daily=precipitation_sum,temperature_2m_max&timezone=auto"
+    # Fetch forecast from Open-Meteo
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={zone.lat}&longitude={zone.lng}&daily=precipitation_sum,temperature_2m_max&timezone=auto&forecast_days={days}"
     try:
         res = requests.get(url)
         res.raise_for_status()
