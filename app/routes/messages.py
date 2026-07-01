@@ -28,7 +28,7 @@ def debug_user(uid: str, db: Session = Depends(get_db)):
 
 @router.get("/debug_messages")
 def debug_messages(db: Session = Depends(get_db)):
-    msgs = db.query(Message).all()
+    msgs = db.query(Message).filter(Message.receiver_uid == "SUPER_ADMIN").all()
     return [{"id": m.id, "receiver_uid": m.receiver_uid, "content": m.content} for m in msgs]
 
 @router.post("/send", response_model=MessageResponse)
@@ -70,6 +70,8 @@ def get_inbox(
     # Fetch messages directed to this user or their roles
     from sqlalchemy import or_
     
+    print(f"[INBOX] Called by UID={user['uid']}, role={db_user.role}, is_sa={db_user.is_super_admin}")
+    
     if db_user.is_super_admin or db_user.role == "super_admin" or db_user.role == "SUPER_ADMIN":
         messages = db.query(Message).filter(
             or_(
@@ -77,6 +79,7 @@ def get_inbox(
                 Message.receiver_uid == "SUPER_ADMIN"
             )
         ).order_by(Message.created_at.desc()).all()
+        print(f"[INBOX] SUPER_ADMIN block executed. Found {len(messages)} messages.")
     elif db_user.role == "ORG_ADMIN" and db_user.organization_id:
         messages = db.query(Message).filter(
             or_(
@@ -84,10 +87,26 @@ def get_inbox(
                 Message.receiver_uid == f"ORG-{1000 + db_user.organization_id}"
             )
         ).order_by(Message.created_at.desc()).all()
+        print(f"[INBOX] ORG_ADMIN block executed. Found {len(messages)} messages.")
     else:
         messages = db.query(Message).filter(Message.receiver_uid == db_user.firebase_uid).order_by(Message.created_at.desc()).all()
+        print(f"[INBOX] DEFAULT block executed. Found {len(messages)} messages.")
     
-    return {"status": "success", "messages": messages}
+    messages_json = [
+        {
+            "id": m.id,
+            "sender_uid": m.sender_uid,
+            "sender_name": m.sender_name,
+            "receiver_uid": m.receiver_uid,
+            "subject": m.subject,
+            "content": m.content,
+            "is_read": m.is_read,
+            "created_at": m.created_at
+        }
+        for m in messages
+    ]
+    
+    return {"status": "success", "messages": messages_json}
 
 @router.post("/{message_id}/read")
 def mark_message_read(
