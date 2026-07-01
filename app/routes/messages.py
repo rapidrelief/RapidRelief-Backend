@@ -55,7 +55,7 @@ def get_inbox(
     filters = [Message.receiver_uid == db_user.firebase_uid]
 
     # If Super Admin, fetch messages directed to "SUPER_ADMIN"
-    if db_user.is_super_admin:
+    if db_user.is_super_admin or db_user.role == "super_admin" or db_user.role == "SUPER_ADMIN":
         filters.append(Message.receiver_uid == "SUPER_ADMIN")
     
     # If Org Admin, fetch messages directed to their Org ID (e.g. "ORG-1001")
@@ -93,7 +93,8 @@ def get_contacts(
     contacts = []
 
     # Super Admin contact (available to everyone except Super Admin)
-    if not db_user.is_super_admin:
+    is_sa = db_user.is_super_admin or db_user.role == "super_admin" or db_user.role == "SUPER_ADMIN"
+    if not is_sa:
         contacts.append({
             "id": "SUPER_ADMIN",
             "name": "Super Admin Dashboard",
@@ -126,7 +127,7 @@ def get_contacts(
             })
             
     # Rescuers (all) if Super Admin
-    if db_user.is_super_admin:
+    if is_sa:
         rescuers = db.query(User).filter(User.role == "RESCUER").all()
         for res in rescuers:
             org_name = ""
