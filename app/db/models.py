@@ -125,3 +125,15 @@ class Report(Base):
     report_type = Column(String, default="Notification") # Flood Warning, SOS, Notification
     is_read = Column(Boolean, default=False)
     created_at = Column(Float, nullable=False)
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_uid = Column(String, nullable=False)
+    sender_name = Column(String, nullable=False)
+    receiver_uid = Column(String, nullable=False) # "SUPER_ADMIN", "ORG-1001", or specific user Firebase UID
+    subject = Column(String, nullable=False)
+    content = Column(String, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(Float, nullable=False)

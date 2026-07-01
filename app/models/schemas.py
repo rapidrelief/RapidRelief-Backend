@@ -51,4 +51,22 @@ class ReportResponse(BaseModel):
     created_at: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+class MessageCreate(BaseModel):
+    receiver_uid: str
+    subject: str
+    content: str
+
+class MessageResponse(BaseModel):
+    id: int
+    sender_uid: str
+    sender_name: str
+    receiver_uid: str
+    subject: str
+    content: str
+    is_read: bool
+    created_at: float
+
+    class Config:
+        from_attributes = True

@@ -6,7 +6,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.db.session import SessionLocal
-from app.db.models import User, Organization, Device, ZoneNode, Zone, SOSRequest, Report
+from app.db.models import User, Organization, Device, ZoneNode, Zone, SOSRequest, Report, Message
 from app.firebase.firebase import db
 
 def serialize_model(model_instance):
@@ -23,6 +23,7 @@ def backup_db(db_session):
             (ZoneNode, 'backup_nodes'),
             (SOSRequest, 'backup_sos'),
             (Report, 'backup_reports'),
+            (Message, 'backup_messages'),
         ]:
             docs = db_session.query(model_class).all()
             pk_col = list(model_class.__table__.primary_key.columns)[0].name
@@ -73,6 +74,7 @@ def restore_db(db_session):
             (ZoneNode, 'backup_nodes'),
             (SOSRequest, 'backup_sos'),
             (Report, 'backup_reports'),
+            (Message, 'backup_messages'),
         ]:
             docs = db.collection(collection_name).stream()
             count = 0
